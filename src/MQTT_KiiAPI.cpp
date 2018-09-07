@@ -35,6 +35,7 @@ MQTT_KiiAPI::MQTT_KiiAPI(
 
 MQTT_KiiAPI::~MQTT_KiiAPI()
 {
+    disconnect();
     loop_stop();
     mosqpp::lib_cleanup();
 }
@@ -63,7 +64,7 @@ void MQTT_KiiAPI::on_connect(int rc)
 void MQTT_KiiAPI::on_message(const struct mosquitto_message *msg)
 {
     cout << "on_message" << endl;
-    cout << msg->topic << endl;
+    cout << "Topic: " << msg->topic << endl;
     if (msg->payloadlen > 0) {
         cout << string((const char*)msg->payload) << endl;
     }

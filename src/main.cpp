@@ -14,8 +14,10 @@ int main() {
         "testVendor",
         "testVendorPass");
 
+    while(getchar() != '\n') {
+    }
 
-   std::cin.good();
+    delete kiiApi;
 
-   delete kiiApi;
+    return 0;
 }
