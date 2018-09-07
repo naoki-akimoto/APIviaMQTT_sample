@@ -3,6 +3,8 @@
 #include <iostream>
 #include <string>
 
+#include "picojson.h"
+
 using namespace std;
 
 #define KEEP_ALIVE 60
@@ -63,10 +65,23 @@ void MQTT_KiiAPI::on_connect(int rc)
 
 void MQTT_KiiAPI::on_message(const struct mosquitto_message *msg)
 {
-    cout << "on_message" << endl;
-    cout << "Topic: " << msg->topic << endl;
+    string topic = "p/anonymous/thing-if/apps/" + this->appId + "/onboardings";
+    if (topic != msg->topic) {
+        cout << "'" << msg->topic << "' is not for onboardings." << endl;
+        return;
+    }
     if (msg->payloadlen > 0) {
-        cout << string((const char*)msg->payload) << endl;
+        string body = string((const char*)msg->payload);
+        if (body.find("200\r\n") == 0) {
+            string json = body.substr(body.find("\r\n\r\n") + 4);
+            picojson::value v;
+            const string err = picojson::parse(v, json);
+            if (!err.empty()) {
+                cout << err << endl;
+            } else {
+                cout << v << endl;
+            }
+        }
     }
 }
 
