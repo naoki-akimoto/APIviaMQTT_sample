@@ -25,6 +25,7 @@ MQTT_KiiAPI::MQTT_KiiAPI(
     this->appKey = string(appKey);
     this->vendorThingID = string(vendorThingID);
     this->thingPassword = string(thingPassword);
+    this->connectAPIBroker = false;
 
     username = "type=oauth2&client_id=" + this->appId;
     password = "client_secret=" + this->appKey;
@@ -44,22 +45,39 @@ MQTT_KiiAPI::~MQTT_KiiAPI()
 
 void MQTT_KiiAPI::on_connect(int rc)
 {
-    cout << "on_connect: " << rc << endl;
     if (rc == 0) {
-        string topic;
-        string payload;
+        if (!this->connectAPIBroker) {
+            string topic;
+            string payload;
 
-        topic = "p/anonymous/thing-if/apps/" + this->appId + "/onboardings";
-        payload = string("POST\n") +
-            "Content-Type: application/vnd.kii.OnboardingWithVendorThingIDByThing+json\n" +
-            "\n" +
-            "{" +
+            topic = "p/anonymous/thing-if/apps/" + this->appId + "/onboardings";
+            payload = string("POST\n") +
+                "Content-Type: application/vnd.kii.OnboardingWithVendorThingIDByThing+json\n" +
+                "\n" +
+                "{" +
                 "\"vendorThingID\":\"" + this->vendorThingID + "\"," +
                 "\"thingPassword\":\"" + this->thingPassword + "\"" +
-            "}";
-        publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
+                "}";
+            publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
+        } else {
+            cout << "succeed to connect API broker." << endl;
+        }
     } else {
         cout << "Failed to connect default broker. (" << rc << ")" << endl;
+    }
+}
+
+void MQTT_KiiAPI::on_disconnect(int rc)
+{
+    if (rc == 0) {
+        if (!this->connectAPIBroker) {
+            this->connectAPIBroker = true;
+
+            APIBrokerInfo &info = this->apiBrokerInfo;
+            reinitialise(info.clientID.c_str(), true);
+            username_pw_set(info.username.c_str(), info.password.c_str());
+            connect_async(info.host.c_str(), info.port, KEEP_ALIVE);
+        }
     }
 }
 
@@ -76,10 +94,21 @@ void MQTT_KiiAPI::on_message(const struct mosquitto_message *msg)
             string json = body.substr(body.find("\r\n\r\n") + 4);
             picojson::value v;
             const string err = picojson::parse(v, json);
-            if (!err.empty()) {
-                cout << err << endl;
+            if (err.empty()) {
+                picojson::object &obj = v.get<picojson::object>();
+                picojson::object &endPoint = obj["mqttEndpoint"].get<picojson::object>();
+                APIBrokerInfo &info = this->apiBrokerInfo;
+                info.accessToken = obj["accessToken"].get<string>();
+                info.thingID = obj["thingID"].get<string>();
+                info.clientID = endPoint["mqttTopic"].get<string>();
+                info.host = endPoint["host"].get<string>();
+                info.port = endPoint["portTCP"].get<double>();
+                info.username = endPoint["username"].get<string>();
+                info.password = endPoint["password"].get<string>();
+
+                disconnect();
             } else {
-                cout << v << endl;
+                cout << err << endl;
             }
         }
     }

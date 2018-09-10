@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <iostream>
 
-#define SITE ""
+#define SITE "mqtt-us.kii.com"
 #define PORT 1883
 #define APPID ""
 #define APPKEY ""
