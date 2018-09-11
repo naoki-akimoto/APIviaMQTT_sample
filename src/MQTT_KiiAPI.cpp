@@ -2,9 +2,8 @@
 
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <thread>
-
-#include "picojson.h"
 
 using namespace std;
 
@@ -117,6 +116,40 @@ void MQTT_KiiAPI::on_message(const struct mosquitto_message *msg)
                 }
             }
         }
+    } else {
+        // API publish response.
+        if (msg->payloadlen > 0) {
+            string body = string((const char*)msg->payload);
+
+            // parse response status.
+            istringstream iss(body);
+            int responseStatus;
+            iss >> responseStatus;
+
+            // parse X-Kii-RequestID.
+            int idIndex = body.find("X-Kii-RequestID:") + 16;
+            string requestID = body.substr(idIndex, body.find("\r\n", idIndex) - idIndex);
+
+            // parse response body json.
+            string json;
+            int bodyIndex = body.find("\r\n\r\n");
+            if (bodyIndex > 0 && body.length() > bodyIndex + 4) {
+                json = body.substr(bodyIndex + 4);
+            } else {
+                json = "{}";
+            }
+            picojson::value v;
+            const string err = picojson::parse(v, json);
+            if (err.empty()) {
+                if (responseStatus >= 200 && responseStatus < 300) {
+                    this->cbMap[requestID].first(v);
+                } else {
+                    this->cbMap[requestID].second(v);
+                }
+            } else {
+                cout << err << endl << json << endl;
+            }
+        }
     }
 }
 
@@ -126,5 +159,45 @@ bool MQTT_KiiAPI::waitForStandby()
         this_thread::sleep_for(chrono::microseconds(1));
     }
     return this->status == STAND_BY_OK;
+}
+
+void MQTT_KiiAPI::registerState(CB_success_t cb_success, CB_fail_t cb_fail)
+{
+    APIBrokerInfo &info = this->apiBrokerInfo;
+    string requestID = "registerState";
+    string topic;
+    string payload;
+
+    topic = "p/" + info.clientID + "/thing-if/apps/" + this->appId + "/targets/thing:" + info.thingID + "/states";
+    payload = string("PUT\n") +
+        "Authorization: Bearer " + info.accessToken + "\n" +
+        "X-Kii-RequestID: " + requestID + "\n" +
+        "Content-Type: application/json\n" +
+        "\n" +
+        "{" +
+          "\"power\":true," +
+          "\"presetTemperature\":25," +
+          "\"fanspeed\":5," +
+          "\"currentTemperature\":28," +
+          "\"currentHumidity\":65" +
+        "}";
+    publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
+    this->cbMap[requestID] = pair<CB_success_t, CB_fail_t>(cb_success, cb_fail);
+}
+
+void MQTT_KiiAPI::getState(CB_success_t cb_success, CB_fail_t cb_fail)
+{
+    APIBrokerInfo &info = this->apiBrokerInfo;
+    string requestID = "getState";
+    string topic;
+    string payload;
+
+    topic = "p/" + info.clientID + "/thing-if/apps/" + this->appId + "/targets/thing:" + info.thingID + "/states";
+    payload = string("GET\n") +
+        "Authorization: Bearer " + info.accessToken + "\n" +
+        "X-Kii-RequestID: " + requestID + "\n" +
+        "\n";
+    publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
+    this->cbMap[requestID] = pair<CB_success_t, CB_fail_t>(cb_success, cb_fail);
 }
 

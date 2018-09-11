@@ -12,6 +12,22 @@
 
 using namespace std;
 
+void registerSuccessCB(picojson::value &v) {
+    cout << "register succeeded:" << v << endl;
+}
+
+void registerFailCB(picojson::value &v) {
+    cout << "register failed:" << v << endl;
+}
+
+void stateSuccessCB(picojson::value &v) {
+    cout << "state succeeded:" << v << endl;
+}
+
+void stateFailCB(picojson::value &v) {
+    cout << "state failed:" << v << endl;
+}
+
 int main() {
     MQTT_KiiAPI *kiiApi;
 
@@ -21,10 +37,14 @@ int main() {
     if (kiiApi->waitForStandby()) {
         while(true) {
             string command;
-            cout << ">>";
-            cin >> command;
+            cout << ">> ";
+            getline(cin, command);
             if (command == "exit") {
                 break;
+            } else if (command == "register") {
+                kiiApi->registerState(registerSuccessCB, registerFailCB);
+            } else if (command == "state") {
+                kiiApi->getState(stateSuccessCB, stateFailCB);
             }
         }
     } else {

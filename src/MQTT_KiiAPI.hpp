@@ -3,6 +3,10 @@
 
 #include <mosquittopp.h>
 #include <string>
+#include <map>
+#include <utility>
+
+#include "picojson.h"
 
 #include "APIBrokerInfo.h"
 
@@ -13,6 +17,9 @@ enum Status {
     STAND_BY_OK,
 };
 
+typedef void (*CB_success_t)(picojson::value &result);
+typedef void (*CB_fail_t)(picojson::value &result);
+
 class MQTT_KiiAPI : public mosqpp::mosquittopp
 {
     private:
@@ -22,6 +29,7 @@ class MQTT_KiiAPI : public mosqpp::mosquittopp
         std::string thingPassword;
         APIBrokerInfo apiBrokerInfo;
         Status status;
+        std::map<std::string, std::pair<CB_success_t, CB_fail_t> > cbMap;
 
         void on_connect(int rc);
         void on_disconnect(int rc);
@@ -38,6 +46,9 @@ class MQTT_KiiAPI : public mosqpp::mosquittopp
         ~MQTT_KiiAPI();
 
         bool waitForStandby();
+
+        void registerState(CB_success_t cb_success, CB_fail_t cb_fail);
+        void getState(CB_success_t cb_success, CB_fail_t cb_fail);
 };
 
 #endif//MQTT_KIIAPI_HPP
