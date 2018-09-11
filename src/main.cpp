@@ -10,13 +10,25 @@
 #define VENDORTHINGID ""
 #define THINGPASSWORD ""
 
+using namespace std;
+
 int main() {
     MQTT_KiiAPI *kiiApi;
 
     kiiApi = new MQTT_KiiAPI(
         SITE, PORT, APPID, APPKEY, VENDORTHINGID, THINGPASSWORD);
 
-    while(getchar() != '\n') {
+    if (kiiApi->waitForStandby()) {
+        while(true) {
+            string command;
+            cout << ">>";
+            cin >> command;
+            if (command == "exit") {
+                break;
+            }
+        }
+    } else {
+      cout << "Please check error." << endl;
     }
 
     delete kiiApi;

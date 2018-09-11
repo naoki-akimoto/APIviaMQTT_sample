@@ -6,6 +6,13 @@
 
 #include "APIBrokerInfo.h"
 
+enum Status {
+    ERROR = -1,
+    CONNECT_DEFAULT,
+    CONNECT_API,
+    STAND_BY_OK,
+};
+
 class MQTT_KiiAPI : public mosqpp::mosquittopp
 {
     private:
@@ -14,7 +21,7 @@ class MQTT_KiiAPI : public mosqpp::mosquittopp
         std::string vendorThingID;
         std::string thingPassword;
         APIBrokerInfo apiBrokerInfo;
-        bool connectAPIBroker;
+        Status status;
 
         void on_connect(int rc);
         void on_disconnect(int rc);
@@ -29,6 +36,8 @@ class MQTT_KiiAPI : public mosqpp::mosquittopp
                 const char *vendorThingID,
                 const char *thingPassword);
         ~MQTT_KiiAPI();
+
+        bool waitForStandby();
 };
 
 #endif//MQTT_KIIAPI_HPP

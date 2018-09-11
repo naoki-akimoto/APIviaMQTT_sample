@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <string>
+#include <thread>
 
 #include "picojson.h"
 
@@ -25,7 +26,7 @@ MQTT_KiiAPI::MQTT_KiiAPI(
     this->appKey = string(appKey);
     this->vendorThingID = string(vendorThingID);
     this->thingPassword = string(thingPassword);
-    this->connectAPIBroker = false;
+    this->status = CONNECT_DEFAULT;
 
     username = "type=oauth2&client_id=" + this->appId;
     password = "client_secret=" + this->appKey;
@@ -46,7 +47,7 @@ MQTT_KiiAPI::~MQTT_KiiAPI()
 void MQTT_KiiAPI::on_connect(int rc)
 {
     if (rc == 0) {
-        if (!this->connectAPIBroker) {
+        if (this->status == CONNECT_DEFAULT) {
             string topic;
             string payload;
 
@@ -60,9 +61,10 @@ void MQTT_KiiAPI::on_connect(int rc)
                 "}";
             publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
         } else {
-            cout << "succeed to connect API broker." << endl;
+            this->status = STAND_BY_OK;
         }
     } else {
+        this->status = ERROR;
         cout << "Failed to connect default broker. (" << rc << ")" << endl;
     }
 }
@@ -70,8 +72,8 @@ void MQTT_KiiAPI::on_connect(int rc)
 void MQTT_KiiAPI::on_disconnect(int rc)
 {
     if (rc == 0) {
-        if (!this->connectAPIBroker) {
-            this->connectAPIBroker = true;
+        if (this->status == CONNECT_DEFAULT) {
+            this->status = CONNECT_API;
 
             APIBrokerInfo &info = this->apiBrokerInfo;
             reinitialise(info.clientID.c_str(), true);
@@ -83,34 +85,46 @@ void MQTT_KiiAPI::on_disconnect(int rc)
 
 void MQTT_KiiAPI::on_message(const struct mosquitto_message *msg)
 {
-    string topic = "p/anonymous/thing-if/apps/" + this->appId + "/onboardings";
-    if (topic != msg->topic) {
-        cout << "'" << msg->topic << "' is not for onboardings." << endl;
-        return;
-    }
-    if (msg->payloadlen > 0) {
-        string body = string((const char*)msg->payload);
-        if (body.find("200\r\n") == 0) {
-            string json = body.substr(body.find("\r\n\r\n") + 4);
-            picojson::value v;
-            const string err = picojson::parse(v, json);
-            if (err.empty()) {
-                picojson::object &obj = v.get<picojson::object>();
-                picojson::object &endPoint = obj["mqttEndpoint"].get<picojson::object>();
-                APIBrokerInfo &info = this->apiBrokerInfo;
-                info.accessToken = obj["accessToken"].get<string>();
-                info.thingID = obj["thingID"].get<string>();
-                info.clientID = endPoint["mqttTopic"].get<string>();
-                info.host = endPoint["host"].get<string>();
-                info.port = endPoint["portTCP"].get<double>();
-                info.username = endPoint["username"].get<string>();
-                info.password = endPoint["password"].get<string>();
+    if (this->status == CONNECT_DEFAULT) {
+        string topic = "p/anonymous/thing-if/apps/" + this->appId + "/onboardings";
+        if (topic != msg->topic) {
+            this->status = ERROR;
+            cout << "'" << msg->topic << "' is not for onboardings." << endl;
+            return;
+        }
+        if (msg->payloadlen > 0) {
+            string body = string((const char*)msg->payload);
+            if (body.find("200\r\n") == 0) {
+                string json = body.substr(body.find("\r\n\r\n") + 4);
+                picojson::value v;
+                const string err = picojson::parse(v, json);
+                if (err.empty()) {
+                    picojson::object &obj = v.get<picojson::object>();
+                    picojson::object &endPoint = obj["mqttEndpoint"].get<picojson::object>();
+                    APIBrokerInfo &info = this->apiBrokerInfo;
+                    info.accessToken = obj["accessToken"].get<string>();
+                    info.thingID = obj["thingID"].get<string>();
+                    info.clientID = endPoint["mqttTopic"].get<string>();
+                    info.host = endPoint["host"].get<string>();
+                    info.port = endPoint["portTCP"].get<double>();
+                    info.username = endPoint["username"].get<string>();
+                    info.password = endPoint["password"].get<string>();
 
-                disconnect();
-            } else {
-                cout << err << endl;
+                    disconnect();
+                } else {
+                    this->status = ERROR;
+                    cout << err << endl;
+                }
             }
         }
     }
+}
+
+bool MQTT_KiiAPI::waitForStandby()
+{
+    while(this->status != ERROR && this->status != STAND_BY_OK) {
+        this_thread::sleep_for(chrono::microseconds(1));
+    }
+    return this->status == STAND_BY_OK;
 }
 
