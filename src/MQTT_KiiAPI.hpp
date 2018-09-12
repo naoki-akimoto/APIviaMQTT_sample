@@ -45,7 +45,7 @@ class MQTT_KiiAPI : public mosqpp::mosquittopp
                 const char *thingPassword);
         ~MQTT_KiiAPI();
 
-        bool waitForStandby();
+        bool waitForReady();
 
         void registerState(CB_success_t cb_success, CB_fail_t cb_fail);
         void getState(CB_success_t cb_success, CB_fail_t cb_fail);

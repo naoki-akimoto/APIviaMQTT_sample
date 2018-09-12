@@ -153,10 +153,10 @@ void MQTT_KiiAPI::on_message(const struct mosquitto_message *msg)
     }
 }
 
-bool MQTT_KiiAPI::waitForStandby()
+bool MQTT_KiiAPI::waitForReady()
 {
     while(this->status != ERROR && this->status != STAND_BY_OK) {
-        this_thread::sleep_for(chrono::microseconds(1));
+        this_thread::sleep_for(chrono::microseconds(100));
     }
     return this->status == STAND_BY_OK;
 }

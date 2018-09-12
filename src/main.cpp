@@ -13,19 +13,19 @@
 using namespace std;
 
 void registerSuccessCB(picojson::value &v) {
-    cout << "register succeeded:" << v << endl;
+    cout << "register succeeded:" << endl << v.serialize(true) << endl;
 }
 
 void registerFailCB(picojson::value &v) {
-    cout << "register failed:" << v << endl;
+    cout << "register failed:" << endl << v.serialize(true) << endl;
 }
 
 void stateSuccessCB(picojson::value &v) {
-    cout << "state succeeded:" << v << endl;
+    cout << "state succeeded:" << endl << v.serialize(true) << endl;
 }
 
 void stateFailCB(picojson::value &v) {
-    cout << "state failed:" << v << endl;
+    cout << "state failed:" << endl << v.serialize(true) << endl;
 }
 
 int main() {
@@ -34,7 +34,8 @@ int main() {
     kiiApi = new MQTT_KiiAPI(
         SITE, PORT, APPID, APPKEY, VENDORTHINGID, THINGPASSWORD);
 
-    if (kiiApi->waitForStandby()) {
+    cout << "Please wait for ready." <<endl;
+    if (kiiApi->waitForReady()) {
         while(true) {
             string command;
             cout << ">> ";
