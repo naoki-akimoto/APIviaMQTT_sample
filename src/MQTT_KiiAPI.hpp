@@ -47,7 +47,7 @@ class MQTT_KiiAPI : public mosqpp::mosquittopp
 
         bool waitForReady();
 
-        void registerState(CB_success_t cb_success, CB_fail_t cb_fail);
+        void registerState(picojson::value &state, CB_success_t cb_success, CB_fail_t cb_fail);
         void getState(CB_success_t cb_success, CB_fail_t cb_fail);
 };
 

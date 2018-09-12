@@ -161,7 +161,7 @@ bool MQTT_KiiAPI::waitForReady()
     return this->status == STAND_BY_OK;
 }
 
-void MQTT_KiiAPI::registerState(CB_success_t cb_success, CB_fail_t cb_fail)
+void MQTT_KiiAPI::registerState(picojson::value &state, CB_success_t cb_success, CB_fail_t cb_fail)
 {
     APIBrokerInfo &info = this->apiBrokerInfo;
     string requestID = "registerState";
@@ -174,13 +174,7 @@ void MQTT_KiiAPI::registerState(CB_success_t cb_success, CB_fail_t cb_fail)
         "X-Kii-RequestID: " + requestID + "\n" +
         "Content-Type: application/json\n" +
         "\n" +
-        "{" +
-          "\"power\":true," +
-          "\"presetTemperature\":25," +
-          "\"fanspeed\":5," +
-          "\"currentTemperature\":28," +
-          "\"currentHumidity\":65" +
-        "}";
+        state.serialize();
     publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
     this->cbMap[requestID] = pair<CB_success_t, CB_fail_t>(cb_success, cb_fail);
 }

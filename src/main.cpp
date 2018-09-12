@@ -42,8 +42,27 @@ int main() {
             getline(cin, command);
             if (command == "exit") {
                 break;
+            } else if (command == "help") {
+                cout << "command list" << endl;
+                cout << "\texit\t\texit this application." << endl;
+                cout << "\thelp\t\tshow this help." << endl;
+                cout << "\tresiter\t\tregister state." << endl;
+                cout << "\tstate\t\tget state." << endl;
             } else if (command == "register") {
-                kiiApi->registerState(registerSuccessCB, registerFailCB);
+                string json = string("{") +
+                    "\"power\":true," +
+                    "\"presetTemperature\":25," +
+                    "\"fanspeed\":5," +
+                    "\"currentTemperature\":28," +
+                    "\"currentHumidity\":65" +
+                    "}";
+                picojson::value state;
+                const string err = picojson::parse(state, json);
+                if (err.empty()) {
+                    kiiApi->registerState(state, registerSuccessCB, registerFailCB);
+                } else {
+                    cout << err << endl;
+                }
             } else if (command == "state") {
                 kiiApi->getState(stateSuccessCB, stateFailCB);
             }
