@@ -42,6 +42,9 @@ MQTT_KiiAPI::MQTT_KiiAPI(
 
 MQTT_KiiAPI::~MQTT_KiiAPI()
 {
+    if (this->status == STAND_BY_OK) {
+        unsubscribe(NULL, this->apiBrokerInfo.clientID.c_str());
+    }
     disconnect();
     loop_stop();
     mosqpp::lib_cleanup();
@@ -66,6 +69,7 @@ void MQTT_KiiAPI::on_connect(int rc)
             publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
         } else {
             this->status = STAND_BY_OK;
+            subscribe(NULL, this->apiBrokerInfo.clientID.c_str(), 1);
         }
     } else {
         this->status = ERROR;
@@ -234,6 +238,24 @@ void MQTT_KiiAPI::executeCommand(string &requestID, picojson::value &command)
         "Content-Type: application/json\n"
         "\n" +
         command.serialize();
+    publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
+}
+
+void MQTT_KiiAPI::sendActionResults(std::string &requestID, std::string &commandID, picojson::value &results)
+{
+    APIBrokerInfo &info = this->apiBrokerInfo;
+    string topic;
+    string payload;
+
+    requestID = "sendActionResults";
+    topic = "p/" + info.clientID + "/thing-if/apps/" + this->appId + "/targets/thing:" + info.thingID + "/commands/" + commandID + "/action-results";
+    payload =
+        "PUT\n"
+        "Authorization: Bearer " + info.accessToken + "\n"
+        "X-Kii-RequestID: " + requestID + "\n"
+        "Content-Type: application/json\n"
+        "\n" +
+        results.serialize();
     publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
 }
 

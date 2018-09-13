@@ -54,6 +54,7 @@ class MQTT_KiiAPI : public mosqpp::mosquittopp
         void getState(std::string &requestID);
         void getCommandList(std::string &requestID);
         void executeCommand(std::string &requestID, picojson::value &command);
+        void sendActionResults(std::string &requestID, std::string &commandID, picojson::value &results);
 };
 
 #endif//MQTT_KIIAPI_HPP
