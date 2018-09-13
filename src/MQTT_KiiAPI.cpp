@@ -51,12 +51,13 @@ void MQTT_KiiAPI::on_connect(int rc)
             string payload;
 
             topic = "p/anonymous/thing-if/apps/" + this->appId + "/onboardings";
-            payload = string("POST\n") +
-                "Content-Type: application/vnd.kii.OnboardingWithVendorThingIDByThing+json\n" +
-                "\n" +
-                "{" +
-                "\"vendorThingID\":\"" + this->vendorThingID + "\"," +
-                "\"thingPassword\":\"" + this->thingPassword + "\"" +
+            payload =
+                "POST\n"
+                "Content-Type: application/vnd.kii.OnboardingWithVendorThingIDByThing+json\n"
+                "\n"
+                "{"
+                "  \"vendorThingID\":\"" + this->vendorThingID + "\","
+                "  \"thingPassword\":\"" + this->thingPassword + "\""
                 "}";
             publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
         } else {
@@ -168,10 +169,11 @@ void MQTT_KiiAPI::registerState(picojson::value &state, CB_success_t cb_success,
     string payload;
 
     topic = "p/" + info.clientID + "/thing-if/apps/" + this->appId + "/targets/thing:" + info.thingID + "/states";
-    payload = string("PUT\n") +
-        "Authorization: Bearer " + info.accessToken + "\n" +
-        "X-Kii-RequestID: " + requestID + "\n" +
-        "Content-Type: application/json\n" +
+    payload =
+        "PUT\n"
+        "Authorization: Bearer " + info.accessToken + "\n"
+        "X-Kii-RequestID: " + requestID + "\n"
+        "Content-Type: application/json\n"
         "\n" +
         state.serialize();
     publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
@@ -186,9 +188,10 @@ void MQTT_KiiAPI::getState(CB_success_t cb_success, CB_fail_t cb_fail)
     string payload;
 
     topic = "p/" + info.clientID + "/thing-if/apps/" + this->appId + "/targets/thing:" + info.thingID + "/states";
-    payload = string("GET\n") +
-        "Authorization: Bearer " + info.accessToken + "\n" +
-        "X-Kii-RequestID: " + requestID + "\n" +
+    payload =
+        "GET\n"
+        "Authorization: Bearer " + info.accessToken + "\n"
+        "X-Kii-RequestID: " + requestID + "\n"
         "\n";
     publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
     this->cbMap[requestID] = pair<CB_success_t, CB_fail_t>(cb_success, cb_fail);
@@ -202,10 +205,30 @@ void MQTT_KiiAPI::getCommandList(CB_success_t cb_success, CB_fail_t cb_fail)
     string payload;
 
     topic = "p/" + info.clientID + "/thing-if/apps/" + this->appId + "/targets/thing:" + info.thingID + "/commands";
-    payload = string("GET\n") +
-        "Authorization: Bearer " + info.accessToken + "\n" +
-        "X-Kii-RequestID: " + requestID + "\n" +
+    payload =
+        "GET\n"
+        "Authorization: Bearer " + info.accessToken + "\n"
+        "X-Kii-RequestID: " + requestID + "\n"
         "\n";
+    publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
+    this->cbMap[requestID] = pair<CB_success_t, CB_fail_t>(cb_success, cb_fail);
+}
+
+void MQTT_KiiAPI::executeCommand(picojson::value &command, CB_success_t cb_success, CB_fail_t cb_fail)
+{
+    APIBrokerInfo &info = this->apiBrokerInfo;
+    string requestID = "executeCommand";
+    string topic;
+    string payload;
+
+    topic = "p/" + info.clientID + "/thing-if/apps/" + this->appId + "/targets/thing:" + info.thingID + "/commands";
+    payload =
+        "PUT\n"
+        "Authorization: Bearer " + info.accessToken + "\n"
+        "X-Kii-RequestID: " + requestID + "\n"
+        "Content-Type: application/json\n"
+        "\n" +
+        command.serialize();
     publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
     this->cbMap[requestID] = pair<CB_success_t, CB_fail_t>(cb_success, cb_fail);
 }

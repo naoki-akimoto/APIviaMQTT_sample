@@ -36,6 +36,14 @@ void commandsFailCB(picojson::value &v) {
     cout << "commands failed:" << endl << v.serialize(true) << endl;
 }
 
+void executeSuccessCB(picojson::value &v) {
+    cout << "execute succeeded:" << endl << v.serialize(true) << endl;
+}
+
+void executeFailCB(picojson::value &v) {
+    cout << "execute failed:" << endl << v.serialize(true) << endl;
+}
+
 int main() {
     MQTT_KiiAPI *kiiApi;
 
@@ -57,13 +65,15 @@ int main() {
                 cout << "\tresiter\t\tregister state." << endl;
                 cout << "\tstate\t\tget state." << endl;
                 cout << "\tcommands\t\tget command list." << endl;
+                cout << "\texecute\t\texecute command." << endl;
             } else if (command == "register") {
-                string json = string("{") +
-                    "\"power\":true," +
-                    "\"presetTemperature\":25," +
-                    "\"fanspeed\":5," +
-                    "\"currentTemperature\":28," +
-                    "\"currentHumidity\":65" +
+                string json =
+                    "{"
+                    "  \"power\":true,"
+                    "  \"presetTemperature\":25,"
+                    "  \"fanspeed\":5,"
+                    "  \"currentTemperature\":28,"
+                    "  \"currentHumidity\":65"
                     "}";
                 picojson::value state;
                 const string err = picojson::parse(state, json);
@@ -76,6 +86,29 @@ int main() {
                 kiiApi->getState(stateSuccessCB, stateFailCB);
             } else if (command == "commands") {
                 kiiApi->getCommandList(commandsSuccessCB, commandsFailCB);
+            } else if (command == "execute") {
+                string json =
+                    "{"
+                    "  \"actions\": ["
+                    "    {\"turnPower\":{\"power\":true}},"
+                    "    {\"setBrightness\":{\"brightness\":3000}}"
+                    "  ],"
+                    "  \"issuer\": \"user:XXXXXXXXXXXX\","
+                    "  \"schema\": \"SmartLight\","
+                    "  \"schemaVersion\":1,"
+                    "  \"title\": \"Turn and set brightness\","
+                    "  \"description\": \"Turn light on and set to full brightness\","
+                    "  \"metadata\": {"
+                    "    \"brightness\":\"full brightness\""
+                    "  }"
+                    "}";
+                picojson::value c;
+                const string err = picojson::parse(c, json);
+                if (err.empty()) {
+                    kiiApi->executeCommand(c, executeSuccessCB, executeFailCB);
+                } else {
+                    cout << err << endl;
+                }
             }
         }
     } else {

@@ -50,6 +50,7 @@ class MQTT_KiiAPI : public mosqpp::mosquittopp
         void registerState(picojson::value &state, CB_success_t cb_success, CB_fail_t cb_fail);
         void getState(CB_success_t cb_success, CB_fail_t cb_fail);
         void getCommandList(CB_success_t cb_success, CB_fail_t cb_fail);
+        void executeCommand(picojson::value &command, CB_success_t cb_success, CB_fail_t cb_fail);
 };
 
 #endif//MQTT_KIIAPI_HPP
