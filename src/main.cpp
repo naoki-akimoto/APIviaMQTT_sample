@@ -28,6 +28,14 @@ void stateFailCB(picojson::value &v) {
     cout << "state failed:" << endl << v.serialize(true) << endl;
 }
 
+void commandsSuccessCB(picojson::value &v) {
+    cout << "commands succeeded:" << endl << v.serialize(true) << endl;
+}
+
+void commandsFailCB(picojson::value &v) {
+    cout << "commands failed:" << endl << v.serialize(true) << endl;
+}
+
 int main() {
     MQTT_KiiAPI *kiiApi;
 
@@ -48,6 +56,7 @@ int main() {
                 cout << "\thelp\t\tshow this help." << endl;
                 cout << "\tresiter\t\tregister state." << endl;
                 cout << "\tstate\t\tget state." << endl;
+                cout << "\tcommands\t\tget command list." << endl;
             } else if (command == "register") {
                 string json = string("{") +
                     "\"power\":true," +
@@ -65,6 +74,8 @@ int main() {
                 }
             } else if (command == "state") {
                 kiiApi->getState(stateSuccessCB, stateFailCB);
+            } else if (command == "commands") {
+                kiiApi->getCommandList(commandsSuccessCB, commandsFailCB);
             }
         }
     } else {

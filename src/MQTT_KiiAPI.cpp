@@ -131,15 +131,14 @@ void MQTT_KiiAPI::on_message(const struct mosquitto_message *msg)
             string requestID = body.substr(idIndex, body.find("\r\n", idIndex) - idIndex);
 
             // parse response body json.
+            picojson::value v;
             string json;
+            string err;
             int bodyIndex = body.find("\r\n\r\n");
             if (bodyIndex > 0 && body.length() > bodyIndex + 4) {
                 json = body.substr(bodyIndex + 4);
-            } else {
-                json = "{}";
+                err = picojson::parse(v, json);
             }
-            picojson::value v;
-            const string err = picojson::parse(v, json);
             if (err.empty()) {
                 if (responseStatus >= 200 && responseStatus < 300) {
                     this->cbMap[requestID].first(v);
@@ -187,6 +186,22 @@ void MQTT_KiiAPI::getState(CB_success_t cb_success, CB_fail_t cb_fail)
     string payload;
 
     topic = "p/" + info.clientID + "/thing-if/apps/" + this->appId + "/targets/thing:" + info.thingID + "/states";
+    payload = string("GET\n") +
+        "Authorization: Bearer " + info.accessToken + "\n" +
+        "X-Kii-RequestID: " + requestID + "\n" +
+        "\n";
+    publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
+    this->cbMap[requestID] = pair<CB_success_t, CB_fail_t>(cb_success, cb_fail);
+}
+
+void MQTT_KiiAPI::getCommandList(CB_success_t cb_success, CB_fail_t cb_fail)
+{
+    APIBrokerInfo &info = this->apiBrokerInfo;
+    string requestID = "getCommandList";
+    string topic;
+    string payload;
+
+    topic = "p/" + info.clientID + "/thing-if/apps/" + this->appId + "/targets/thing:" + info.thingID + "/commands";
     payload = string("GET\n") +
         "Authorization: Bearer " + info.accessToken + "\n" +
         "X-Kii-RequestID: " + requestID + "\n" +
