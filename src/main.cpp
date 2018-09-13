@@ -12,47 +12,30 @@
 
 using namespace std;
 
-void registerSuccessCB(picojson::value &v) {
-    cout << "register succeeded:" << endl << v.serialize(true) << endl;
+void successCB(string &requestID, picojson::value &v) {
+    cout << "Request: " << requestID << " succeeded." << endl;
+    if (!v.is<picojson::null>()) {
+        cout << v.serialize(true) << endl;
+    }
 }
 
-void registerFailCB(picojson::value &v) {
-    cout << "register failed:" << endl << v.serialize(true) << endl;
-}
-
-void stateSuccessCB(picojson::value &v) {
-    cout << "state succeeded:" << endl << v.serialize(true) << endl;
-}
-
-void stateFailCB(picojson::value &v) {
-    cout << "state failed:" << endl << v.serialize(true) << endl;
-}
-
-void commandsSuccessCB(picojson::value &v) {
-    cout << "commands succeeded:" << endl << v.serialize(true) << endl;
-}
-
-void commandsFailCB(picojson::value &v) {
-    cout << "commands failed:" << endl << v.serialize(true) << endl;
-}
-
-void executeSuccessCB(picojson::value &v) {
-    cout << "execute succeeded:" << endl << v.serialize(true) << endl;
-}
-
-void executeFailCB(picojson::value &v) {
-    cout << "execute failed:" << endl << v.serialize(true) << endl;
+void failCB(string &requestID, picojson::value &v) {
+    cout << "Request: " << requestID << " failed." << endl;
+    if (!v.is<picojson::null>()) {
+        cout << v.serialize(true) << endl;
+    }
 }
 
 int main() {
     MQTT_KiiAPI *kiiApi;
 
     kiiApi = new MQTT_KiiAPI(
-        SITE, PORT, APPID, APPKEY, VENDORTHINGID, THINGPASSWORD);
+        SITE, PORT, APPID, APPKEY, VENDORTHINGID, THINGPASSWORD, successCB, failCB);
 
     cout << "Please wait for ready." <<endl;
     if (kiiApi->waitForReady()) {
         while(true) {
+            string requestID;
             string command;
             cout << ">> ";
             getline(cin, command);
@@ -78,14 +61,17 @@ int main() {
                 picojson::value state;
                 const string err = picojson::parse(state, json);
                 if (err.empty()) {
-                    kiiApi->registerState(state, registerSuccessCB, registerFailCB);
+                    kiiApi->registerState(requestID, state);
+                    cout << requestID << " requested." << endl;
                 } else {
                     cout << err << endl;
                 }
             } else if (command == "state") {
-                kiiApi->getState(stateSuccessCB, stateFailCB);
+                kiiApi->getState(requestID);
+                cout << requestID << " requested." << endl;
             } else if (command == "commands") {
-                kiiApi->getCommandList(commandsSuccessCB, commandsFailCB);
+                kiiApi->getCommandList(requestID);
+                cout << requestID << " requested." << endl;
             } else if (command == "execute") {
                 string json =
                     "{"
@@ -105,7 +91,8 @@ int main() {
                 picojson::value c;
                 const string err = picojson::parse(c, json);
                 if (err.empty()) {
-                    kiiApi->executeCommand(c, executeSuccessCB, executeFailCB);
+                    kiiApi->executeCommand(requestID, c);
+                    cout << requestID << " requested." << endl;
                 } else {
                     cout << err << endl;
                 }

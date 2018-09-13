@@ -15,7 +15,9 @@ MQTT_KiiAPI::MQTT_KiiAPI(
         const char *appId,
         const char *appKey,
         const char *vendorThingID,
-        const char *thingPassword)
+        const char *thingPassword,
+        CB_success_t cb_success,
+        CB_fail_t cb_fail)
     : mosquittopp("anonymous")
 {
     string username;
@@ -26,6 +28,8 @@ MQTT_KiiAPI::MQTT_KiiAPI(
     this->vendorThingID = string(vendorThingID);
     this->thingPassword = string(thingPassword);
     this->status = CONNECT_DEFAULT;
+    this->successCB = cb_success;
+    this->failCB = cb_fail;
 
     username = "type=oauth2&client_id=" + this->appId;
     password = "client_secret=" + this->appKey;
@@ -142,9 +146,13 @@ void MQTT_KiiAPI::on_message(const struct mosquitto_message *msg)
             }
             if (err.empty()) {
                 if (responseStatus >= 200 && responseStatus < 300) {
-                    this->cbMap[requestID].first(v);
+                    if (this->successCB != NULL) {
+                        this->successCB(requestID, v);
+                    }
                 } else {
-                    this->cbMap[requestID].second(v);
+                    if (this->failCB != NULL) {
+                        this->failCB(requestID, v);
+                    }
                 }
             } else {
                 cout << err << endl << json << endl;
@@ -161,13 +169,13 @@ bool MQTT_KiiAPI::waitForReady()
     return this->status == STAND_BY_OK;
 }
 
-void MQTT_KiiAPI::registerState(picojson::value &state, CB_success_t cb_success, CB_fail_t cb_fail)
+void MQTT_KiiAPI::registerState(string &requestID, picojson::value &state)
 {
     APIBrokerInfo &info = this->apiBrokerInfo;
-    string requestID = "registerState";
     string topic;
     string payload;
 
+    requestID = "registerState";
     topic = "p/" + info.clientID + "/thing-if/apps/" + this->appId + "/targets/thing:" + info.thingID + "/states";
     payload =
         "PUT\n"
@@ -177,16 +185,15 @@ void MQTT_KiiAPI::registerState(picojson::value &state, CB_success_t cb_success,
         "\n" +
         state.serialize();
     publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
-    this->cbMap[requestID] = pair<CB_success_t, CB_fail_t>(cb_success, cb_fail);
 }
 
-void MQTT_KiiAPI::getState(CB_success_t cb_success, CB_fail_t cb_fail)
+void MQTT_KiiAPI::getState(string &requestID)
 {
     APIBrokerInfo &info = this->apiBrokerInfo;
-    string requestID = "getState";
     string topic;
     string payload;
 
+    requestID = "getState";
     topic = "p/" + info.clientID + "/thing-if/apps/" + this->appId + "/targets/thing:" + info.thingID + "/states";
     payload =
         "GET\n"
@@ -194,16 +201,15 @@ void MQTT_KiiAPI::getState(CB_success_t cb_success, CB_fail_t cb_fail)
         "X-Kii-RequestID: " + requestID + "\n"
         "\n";
     publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
-    this->cbMap[requestID] = pair<CB_success_t, CB_fail_t>(cb_success, cb_fail);
 }
 
-void MQTT_KiiAPI::getCommandList(CB_success_t cb_success, CB_fail_t cb_fail)
+void MQTT_KiiAPI::getCommandList(string &requestID)
 {
     APIBrokerInfo &info = this->apiBrokerInfo;
-    string requestID = "getCommandList";
     string topic;
     string payload;
 
+    requestID = "getCommandList";
     topic = "p/" + info.clientID + "/thing-if/apps/" + this->appId + "/targets/thing:" + info.thingID + "/commands";
     payload =
         "GET\n"
@@ -211,16 +217,15 @@ void MQTT_KiiAPI::getCommandList(CB_success_t cb_success, CB_fail_t cb_fail)
         "X-Kii-RequestID: " + requestID + "\n"
         "\n";
     publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
-    this->cbMap[requestID] = pair<CB_success_t, CB_fail_t>(cb_success, cb_fail);
 }
 
-void MQTT_KiiAPI::executeCommand(picojson::value &command, CB_success_t cb_success, CB_fail_t cb_fail)
+void MQTT_KiiAPI::executeCommand(string &requestID, picojson::value &command)
 {
     APIBrokerInfo &info = this->apiBrokerInfo;
-    string requestID = "executeCommand";
     string topic;
     string payload;
 
+    requestID = "executeCommand";
     topic = "p/" + info.clientID + "/thing-if/apps/" + this->appId + "/targets/thing:" + info.thingID + "/commands";
     payload =
         "PUT\n"
@@ -230,6 +235,5 @@ void MQTT_KiiAPI::executeCommand(picojson::value &command, CB_success_t cb_succe
         "\n" +
         command.serialize();
     publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
-    this->cbMap[requestID] = pair<CB_success_t, CB_fail_t>(cb_success, cb_fail);
 }
 

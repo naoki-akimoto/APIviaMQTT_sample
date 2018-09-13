@@ -17,8 +17,8 @@ enum Status {
     STAND_BY_OK,
 };
 
-typedef void (*CB_success_t)(picojson::value &result);
-typedef void (*CB_fail_t)(picojson::value &result);
+typedef void (*CB_success_t)(std::string &requestID, picojson::value &result);
+typedef void (*CB_fail_t)(std::string &requestID, picojson::value &result);
 
 class MQTT_KiiAPI : public mosqpp::mosquittopp
 {
@@ -29,7 +29,8 @@ class MQTT_KiiAPI : public mosqpp::mosquittopp
         std::string thingPassword;
         APIBrokerInfo apiBrokerInfo;
         Status status;
-        std::map<std::string, std::pair<CB_success_t, CB_fail_t> > cbMap;
+        CB_success_t successCB;
+        CB_fail_t failCB;
 
         void on_connect(int rc);
         void on_disconnect(int rc);
@@ -42,15 +43,17 @@ class MQTT_KiiAPI : public mosqpp::mosquittopp
                 const char *appId,
                 const char *appKey,
                 const char *vendorThingID,
-                const char *thingPassword);
+                const char *thingPassword,
+                CB_success_t cb_success,
+                CB_fail_t cb_fail);
         ~MQTT_KiiAPI();
 
         bool waitForReady();
 
-        void registerState(picojson::value &state, CB_success_t cb_success, CB_fail_t cb_fail);
-        void getState(CB_success_t cb_success, CB_fail_t cb_fail);
-        void getCommandList(CB_success_t cb_success, CB_fail_t cb_fail);
-        void executeCommand(picojson::value &command, CB_success_t cb_success, CB_fail_t cb_fail);
+        void registerState(std::string &requestID, picojson::value &state);
+        void getState(std::string &requestID);
+        void getCommandList(std::string &requestID);
+        void executeCommand(std::string &requestID, picojson::value &command);
 };
 
 #endif//MQTT_KIIAPI_HPP
