@@ -47,8 +47,9 @@ int main() {
                 cout << "\thelp\t\tshow this help." << endl;
                 cout << "\tresiter\t\tregister state." << endl;
                 cout << "\tstate\t\tget state." << endl;
-                cout << "\tcommands\t\tget command list." << endl;
-                cout << "\texecute\t\texecute command." << endl;
+                cout << "\tcommands\tget command list." << endl;
+                // cout << "\texecute\t\texecute command." << endl;
+                cout << "\tresult\t\tsend results of command." << endl;
             } else if (command == "register") {
                 string json =
                     "{"
@@ -73,25 +74,37 @@ int main() {
                 kiiApi->getCommandList(requestID);
                 cout << requestID << " requested." << endl;
             } else if (command == "execute") {
+                /*
                 string json =
                     "{"
                     "  \"actions\": ["
-                    "    {\"turnPower\":{\"power\":true}},"
-                    "    {\"setBrightness\":{\"brightness\":3000}}"
+                    "    {\"testAction\":{}}"
                     "  ],"
-                    "  \"issuer\": \"user:XXXXXXXXXXXX\","
-                    "  \"schema\": \"SmartLight\","
-                    "  \"schemaVersion\":1,"
-                    "  \"title\": \"Turn and set brightness\","
-                    "  \"description\": \"Turn light on and set to full brightness\","
-                    "  \"metadata\": {"
-                    "    \"brightness\":\"full brightness\""
-                    "  }"
+                    "  \"issuer\": \"user:12b097a00022-ac2b-8e11-4d7b-03d36642\","
+                    "  \"schema\": \"\","
+                    "  \"schemaVersion\":0"
                     "}";
                 picojson::value c;
                 const string err = picojson::parse(c, json);
                 if (err.empty()) {
                     kiiApi->executeCommand(requestID, c);
+                    cout << requestID << " requested." << endl;
+                } else {
+                    cout << err << endl;
+                }
+                */
+            } else if (command == "result") {
+                string commandID = "2420dfb0-b7e8-11e8-90f5-22000a66c675";
+                string json =
+                    "{"
+                    "  \"actionResults\": ["
+                    "    {\"testAction\":{\"succeeded\":true}}"
+                    "  ]"
+                    "}";
+                picojson::value v;
+                const string err = picojson::parse(v, json);
+                if (err.empty()) {
+                    kiiApi->sendActionResults(requestID, commandID, v);
                     cout << requestID << " requested." << endl;
                 } else {
                     cout << err << endl;

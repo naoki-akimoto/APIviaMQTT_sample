@@ -69,7 +69,7 @@ void MQTT_KiiAPI::on_connect(int rc)
             publish(NULL, topic.c_str(), payload.size(), payload.c_str(), 1, false);
         } else {
             this->status = STAND_BY_OK;
-            subscribe(NULL, this->apiBrokerInfo.clientID.c_str(), 1);
+            subscribe(NULL, this->apiBrokerInfo.clientID.c_str(), 0);
         }
     } else {
         this->status = ERROR;
