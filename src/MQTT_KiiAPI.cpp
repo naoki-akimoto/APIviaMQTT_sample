@@ -16,6 +16,7 @@ MQTT_KiiAPI::MQTT_KiiAPI(
         const char *appKey,
         const char *vendorThingID,
         const char *thingPassword,
+        CB_command_t cb_command,
         CB_success_t cb_success,
         CB_fail_t cb_fail)
     : mosquittopp("anonymous")
@@ -28,6 +29,7 @@ MQTT_KiiAPI::MQTT_KiiAPI(
     this->vendorThingID = string(vendorThingID);
     this->thingPassword = string(thingPassword);
     this->status = CONNECT_DEFAULT;
+    this->commandCB = cb_command;
     this->successCB = cb_success;
     this->failCB = cb_fail;
 
@@ -102,66 +104,92 @@ void MQTT_KiiAPI::on_message(const struct mosquitto_message *msg)
         }
         if (msg->payloadlen > 0) {
             string body = string((const char*)msg->payload);
-            if (body.find("200\r\n") == 0) {
-                string json = body.substr(body.find("\r\n\r\n") + 4);
-                picojson::value v;
-                const string err = picojson::parse(v, json);
-                if (err.empty()) {
-                    picojson::object &obj = v.get<picojson::object>();
-                    picojson::object &endPoint = obj["mqttEndpoint"].get<picojson::object>();
-                    APIBrokerInfo &info = this->apiBrokerInfo;
-                    info.accessToken = obj["accessToken"].get<string>();
-                    info.thingID = obj["thingID"].get<string>();
-                    info.clientID = endPoint["mqttTopic"].get<string>();
-                    info.host = endPoint["host"].get<string>();
-                    info.port = endPoint["portTCP"].get<double>();
-                    info.username = endPoint["username"].get<string>();
-                    info.password = endPoint["password"].get<string>();
+            parseAPIBrokerInfo(body);
+        }
+    } else {
+        if (msg->payloadlen > 0) {
+            string body = string((const char*)msg->payload);
+            if (msg->topic == this->apiBrokerInfo.clientID) {
+                // Received command.
+                parseCommand(body);
+            } else {
+                // API publish response.
+                parseAPIResponse(body);
+            }
+        }
+    }
+}
 
-                    disconnect();
-                } else {
-                    this->status = ERROR;
-                    cout << err << endl;
-                }
+void MQTT_KiiAPI::parseAPIBrokerInfo(string &msg)
+{
+    if (msg.find("200\r\n") == 0) {
+        string json = msg.substr(msg.find("\r\n\r\n") + 4);
+        picojson::value v;
+        const string err = picojson::parse(v, json);
+        if (err.empty()) {
+            picojson::object &obj = v.get<picojson::object>();
+            picojson::object &endPoint = obj["mqttEndpoint"].get<picojson::object>();
+            APIBrokerInfo &info = this->apiBrokerInfo;
+            info.accessToken = obj["accessToken"].get<string>();
+            info.thingID = obj["thingID"].get<string>();
+            info.clientID = endPoint["mqttTopic"].get<string>();
+            info.host = endPoint["host"].get<string>();
+            info.port = endPoint["portTCP"].get<double>();
+            info.username = endPoint["username"].get<string>();
+            info.password = endPoint["password"].get<string>();
+
+            disconnect();
+        } else {
+            this->status = ERROR;
+            cout << err << endl;
+        }
+    } else {
+        this->status = ERROR;
+        cout << "Failed to get API Broker infomation." << endl << msg << endl;
+    }
+}
+
+void MQTT_KiiAPI::parseCommand(string &msg)
+{
+    picojson::value v;
+    string err = picojson::parse(v, msg);
+    if (err.empty()) {
+        this->commandCB(*this, v);
+    }
+}
+
+void MQTT_KiiAPI::parseAPIResponse(string &msg)
+{
+    // parse response status.
+    istringstream iss(msg);
+    int responseStatus;
+    iss >> responseStatus;
+
+    // parse X-Kii-RequestID.
+    int idIndex = msg.find("X-Kii-RequestID:") + 16;
+    string requestID = msg.substr(idIndex, msg.find("\r\n", idIndex) - idIndex);
+
+    // parse response body json.
+    picojson::value v;
+    string json;
+    string err;
+    int bodyIndex = msg.find("\r\n\r\n");
+    if (bodyIndex > 0 && msg.length() > bodyIndex + 4) {
+        json = msg.substr(bodyIndex + 4);
+        err = picojson::parse(v, json);
+    }
+    if (err.empty()) {
+        if (responseStatus >= 200 && responseStatus < 300) {
+            if (this->successCB != NULL) {
+                this->successCB(requestID, v);
+            }
+        } else {
+            if (this->failCB != NULL) {
+                this->failCB(requestID, v);
             }
         }
     } else {
-        // API publish response.
-        if (msg->payloadlen > 0) {
-            string body = string((const char*)msg->payload);
-
-            // parse response status.
-            istringstream iss(body);
-            int responseStatus;
-            iss >> responseStatus;
-
-            // parse X-Kii-RequestID.
-            int idIndex = body.find("X-Kii-RequestID:") + 16;
-            string requestID = body.substr(idIndex, body.find("\r\n", idIndex) - idIndex);
-
-            // parse response body json.
-            picojson::value v;
-            string json;
-            string err;
-            int bodyIndex = body.find("\r\n\r\n");
-            if (bodyIndex > 0 && body.length() > bodyIndex + 4) {
-                json = body.substr(bodyIndex + 4);
-                err = picojson::parse(v, json);
-            }
-            if (err.empty()) {
-                if (responseStatus >= 200 && responseStatus < 300) {
-                    if (this->successCB != NULL) {
-                        this->successCB(requestID, v);
-                    }
-                } else {
-                    if (this->failCB != NULL) {
-                        this->failCB(requestID, v);
-                    }
-                }
-            } else {
-                cout << err << endl << json << endl;
-            }
-        }
+        cout << err << endl << json << endl;
     }
 }
 

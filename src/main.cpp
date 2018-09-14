@@ -12,6 +12,13 @@
 
 using namespace std;
 
+void commandCB(MQTT_KiiAPI &api, picojson::value &v) {
+    cout << "Command alived: " << endl;
+    if (!v.is<picojson::null>()) {
+        cout << v.serialize(true) << endl;
+    }
+}
+
 void successCB(string &requestID, picojson::value &v) {
     cout << "Request: " << requestID << " succeeded." << endl;
     if (!v.is<picojson::null>()) {
@@ -30,7 +37,7 @@ int main() {
     MQTT_KiiAPI *kiiApi;
 
     kiiApi = new MQTT_KiiAPI(
-        SITE, PORT, APPID, APPKEY, VENDORTHINGID, THINGPASSWORD, successCB, failCB);
+        SITE, PORT, APPID, APPKEY, VENDORTHINGID, THINGPASSWORD, commandCB, successCB, failCB);
 
     cout << "Please wait for ready." <<endl;
     if (kiiApi->waitForReady()) {
