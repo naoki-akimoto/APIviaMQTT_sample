@@ -2,6 +2,7 @@
 
 #include <unistd.h>
 #include <iostream>
+#include <thread>
 
 #define SITE "mqtt-us.kii.com"
 #define PORT 1883
@@ -24,6 +25,14 @@ void commandCB(MQTT_KiiAPI &api, picojson::value &v) {
         for (picojson::array::iterator it = actions.begin(); it != actions.end(); it++) {
             picojson::object &action = it->get<picojson::object>();
             string actionName = action.begin()->first;
+            if (actionName == "sleep") {
+                cout << "Receive sleep command." << endl;
+                for (int i = 30; i > 0; i--) {
+                    cout << i << endl;
+                    this_thread::sleep_for(chrono::seconds(1));
+                }
+                cout << "Wake up." << endl;
+            }
 
             picojson::object succeeded;
             succeeded.insert(make_pair("succeeded", picojson::value(true)));
