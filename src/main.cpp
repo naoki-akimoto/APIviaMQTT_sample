@@ -16,6 +16,29 @@ void commandCB(MQTT_KiiAPI &api, picojson::value &v) {
     cout << "Command alived: " << endl;
     if (!v.is<picojson::null>()) {
         cout << v.serialize(true) << endl;
+
+        picojson::array results;
+        picojson::object &obj = v.get<picojson::object>();
+        string commandID = obj["commandID"].get<string>();
+        picojson::array &actions = obj["actions"].get<picojson::array>();
+        for (picojson::array::iterator it = actions.begin(); it != actions.end(); it++) {
+            picojson::object &action = it->get<picojson::object>();
+            string actionName = action.begin()->first;
+
+            picojson::object succeeded;
+            succeeded.insert(make_pair("succeeded", picojson::value(true)));
+
+            picojson::object result;
+            result.insert(std::make_pair(actionName, picojson::value(succeeded)));
+            results.push_back(picojson::value(result));
+        }
+        picojson::object sendObj;
+        sendObj.insert(std::make_pair("actionResults", picojson::value(results)));
+
+        string requestID;
+        picojson::value send = picojson::value(sendObj);
+        api.sendActionResults(requestID, commandID, send);
+        cout << requestID << " requested sendActionResults." << endl;
     }
 }
 
